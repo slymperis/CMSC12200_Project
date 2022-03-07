@@ -1,6 +1,3 @@
-# TRENDS TO DATAFRAME PROGRAM -WILL GRIFFIN
-
-# key imports
 import pytrends
 from pytrends.request import TrendReq
 from pytrends import dailydata
