@@ -115,5 +115,4 @@ def get_analyst_recommendations(tckr):
     count_roll = merged_df["count"].rolling(90, 0).apply(lambda x: np.nansum(x))
     merged_df["rolling_avg"] = sum_roll/count_roll
     merged_df = merged_df[90:]
-    #merged_df["analyst_recs_lagged"] = merged_df["rolling_avg"].shift(1)
     return merged_df
