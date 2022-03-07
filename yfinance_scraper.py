@@ -53,17 +53,22 @@ def get_log_return_df(d):
     combined_df = pd.concat(series, keys=col_names, axis=1)
     return combined_df
 
-def create_df_lags(df, key_to_predict, max_lags):
+def create_df_lags(df, key_to_predict, max_lags, oos=False):
     """
     Creates DataFrame columns up to maximum number of lags
     :param df: DataFrame to modify
     :param key_to_predict: Key not to modfiy
+    :param oos: Boolean, False by default: if true will shift each lag down by one to allow for
+    out of sample forecasting
     :return: None, modifies DataFrame in place
     """
     for col in df.columns:
         lag = 1
         for i in range(max_lags):
-            df[col+"_lag_"+str(lag)] = df[col].shift(lag)
+            if oos:
+                df[col+"_lag_"+str(lag)] = df[col].shift(lag-1)
+            else:
+                df[col+"_lag_"+str(lag)] = df[col].shift(lag)
             lag += 1
         if col != key_to_predict:
             df.drop(col, axis=1, inplace=True)
@@ -110,5 +115,5 @@ def get_analyst_recommendations(tckr):
     count_roll = merged_df["count"].rolling(90, 0).apply(lambda x: np.nansum(x))
     merged_df["rolling_avg"] = sum_roll/count_roll
     merged_df = merged_df[90:]
-    merged_df["analyst_recs_lagged"] = merged_df["rolling_avg"].shift(1)
+    #merged_df["analyst_recs_lagged"] = merged_df["rolling_avg"].shift(1)
     return merged_df
