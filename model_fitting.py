@@ -73,7 +73,6 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
             ret_df["rolling_avg"] = ret_df["rolling_avg"].shift(1)
             ret_df = ret_df.rename(columns={"rolling_avg": str(tckr)+"_analyst_recs"})
             oos_df = oos_df.rename(columns={"rolling_avg": str(tckr)+"_analyst_recs"})
-    #print(oos_df)
     return ret_df, oos_df
 
 def train_validate_test_split(df):
@@ -162,7 +161,6 @@ def evaluate_models(df, model_tuples, key_to_predict, max_lags):
     :param max_lags: the maximum number of lags to create
     :return: the best model tuple
     """
-    #create_df_lags(df, key_to_predict, max_lags)
     best_mse = None
     best_model_tup = None
     for model_tup in model_tuples:
@@ -177,6 +175,16 @@ def evaluate_models(df, model_tuples, key_to_predict, max_lags):
     return best_model_tup
 
 def get_best_random_forest(train, validate, key_to_predict, min_depth=1, max_depth=5):
+    """
+    Gets the best random forest by trying model's of various depth and picking the one with the best performance
+    in the validation set
+    :param train: Train data
+    :param validate: Validate data
+    :param key_to_predict: String
+    :param min_depth: Int
+    :param max_depth: Int
+    :return: Best Random Forest model
+    """
     train, validate = train.fillna(0), validate.fillna(0)
     X_train = train.loc[:, train.columns != key_to_predict]
     Y_train = train[key_to_predict]
@@ -197,6 +205,16 @@ def get_best_random_forest(train, validate, key_to_predict, min_depth=1, max_dep
     return rf
 
 def get_best_gradient_booster(train, validate, key_to_predict, min_depth = 1, max_depth=5):
+    """
+    Gets the best Gradient Booster model by trying model's of various depth and evaluating performance on the
+    validation set
+    :param train: Train data
+    :param validate: Validate data
+    :param key_to_predict: String
+    :param min_depth: Int
+    :param max_depth: Int
+    :return: Best Gradient Booster model
+    """
     train, validate = train.fillna(0), validate.fillna(0)
     X_train = train.loc[:, train.columns != key_to_predict]
     Y_train = train[key_to_predict]
@@ -233,14 +251,6 @@ def back_test_model(df, key_to_predict, max_lags):
     average_underlying_return = np.average(df[key_to_predict])
     underlying_std = np.std(df[key_to_predict])
     underlying_sharpe = (average_underlying_return/underlying_std) * (365 ** .5)
-    """
-    print("Total log return: ", total_log_return)
-    print("Average return: ", average_return)
-    print("Sharpe: ", sharpe)
-    print("Total underlying log return: ", total_underlying_log_return)
-    print("Average underlying return: ", average_underlying_return)
-    print("Underlying sharpe: ", underlying_sharpe)
-    """
     output = {"total_log_return": total_log_return,
               "average_return": average_return,
               "sharpe": sharpe, "total_underlying_log_return": total_underlying_log_return,
@@ -253,9 +263,13 @@ def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywo
     model_results = []
     data, oos_data = get_data(tckr_set, lags, key_to_predict, keywords, start_year, start_month, end_year, end_month,
                     analyst_recs)
-    #print(data)
-    print("OOS_DATA")
-    print(oos_data)
+    """
+    For a single ticker gets data and fits best linear, Random Forest, and Gradient Booster model before
+    choosing the one that generates the highest Sharpe ratio in the test set and using it to forecast
+    expected returns one day out of sample
+    :params: Data specifications passed to get_data
+    :return: expected return forecast (float)
+    """
     train, validate, test = train_validate_test_split(data)
     test_final = test.copy(deep=True)
     top_models = find_lin_reg_models(train.copy(deep=True), key_to_predict, lags, models_to_evaluate)
@@ -264,7 +278,6 @@ def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywo
     test_copy = test.copy(deep=True)
     test_copy["preds"] = model.predict(test_copy)
     backtest_results = back_test_model(test_copy, key_to_predict, lags)
-    print(backtest_results)
     lin_sharpe = backtest_results["sharpe"]
     model_results.append((lin_sharpe, model))
 
@@ -272,7 +285,6 @@ def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywo
     test_copy = test.copy(deep=True).fillna(0)
     test_copy["preds"] = rf.predict(test_copy.loc[:, test_copy.columns != key_to_predict])
     backtest_results = back_test_model(test_copy, key_to_predict, lags)
-    print(backtest_results)
     rf_sharpe = backtest_results["sharpe"]
     model_results.append((rf_sharpe, rf))
 
@@ -280,7 +292,6 @@ def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywo
     test_copy = test.copy(deep=True).fillna(0)
     test_copy["preds"] = gb.predict(test_copy.loc[:, test_copy.columns != key_to_predict])
     backtest_results = back_test_model(test_copy, key_to_predict, lags)
-    print(backtest_results)
     gb_sharpe = backtest_results["sharpe"]
     model_results.append((gb_sharpe, gb))
 
@@ -288,13 +299,15 @@ def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywo
     best_sharpe, best_model = best_model_tup
     return best_model.predict(oos_data.drop(key_to_predict, axis=1).fillna(0))[-1]
 
-#def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywords=None, start_year = 2004, start_month = 1,
-             #end_year = None, end_month = None, analyst_recs = False):
-
-
-#MODEL_SPECS = {"GME": ({"GME", "AMC", "BB"}, 3, "GME_log_return", 3, ["GME"], 2021, 8, 2022, 2, True)}
-
 def get_expected_returns(model_specs):
+    """
+    Takes in a dictionary mapping tickers to requested model specifications and tries different linear,
+    Random Forest, and Gradient Booster models to model each ticker's returns
+    Outputs an array with the best forecast of the one step out of sample expected return for each ticker as well
+    as log returns data to be used for modelling the variance-covariance matrix
+    :param model_specs: Dictionary
+    :return: expected_returns (NumPy array), log_returns (DataFrame) tuple
+    """
     expected_returns = []
     tckrs = set(model_specs.keys())
     log_returns = get_log_return_df(get_yfinance_data(sorted(tckrs)))
