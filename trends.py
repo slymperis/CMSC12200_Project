@@ -73,7 +73,7 @@ def daily_interest_table(kw_lst, end_year, end_month, start_year = 2004, start_m
     d = {}
     for word in kw_lst:
         df = dailydata.get_daily_data(word, start_year, start_month,
-                                      end_year, end_month, wait_time=.05)
+                                      end_year, end_month, wait_time=.10)
         interest = df[word]
         d[word] = interest
     output_df = pd.DataFrame(d).dropna()
