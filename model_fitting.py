@@ -3,9 +3,10 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 import statsmodels.formula.api as sm
-from yfinance_scraper import create_df_cols, get_yfinance_data, get_log_return_df, create_df_lags, get_analyst_recommendations
+from yfinance_scraper import create_df_cols, get_yfinance_data, get_log_return_df, create_df_lags, \
+    get_analyst_recommendations
 from trends import daily_interest_table
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
 pd.set_option('display.max_columns', None)
 
@@ -25,10 +26,13 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
     :param end_year: (Int) Optional, most recent year to get trends data for, if none will pull data up to today
     :param end_month: (Int) Optional, most recent month to get trends data for, if none will pull data up to today
     :param analyst_recs: (Boolean) whether or not to include scored analyst recommendations
-    :return: DataFrame
+    :return: ret_df, oos_df tuple where ret_df is for fitting and testing models and oos_df is exclusively for
+    forecasting tomorrow's expected return
     """
     ret_df = get_log_return_df(get_yfinance_data(tckr_set))
+    oos_df = ret_df.copy(deep=True)[-100:]
     create_df_lags(ret_df, key_to_predict, lags)
+    create_df_lags(oos_df, key_to_predict, lags, oos=True)
     if keywords is not None:
         if (end_year is None) or (end_month is None):
             today = dt.datetime.now()
@@ -45,17 +49,32 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
             lag_interest_colnames = list(interest_df.columns)
             lag_interest_colnames = [x.replace(" ", "")+"_interest_lag_"+str(lag) for x in lag_interest_colnames]
             lag_interest.columns = lag_interest_colnames
-            ret_df = pd.merge(ret_df, lag_interest, left_on=date_col_name, right_index=True)
+            ret_df = pd.merge(ret_df, lag_interest, left_on=date_col_name, right_index=True, how="outer")
+            ret_df = ret_df.dropna(axis=1, how="all")
             ret_df = ret_df.drop(date_col_name, axis=1)
+        for lag in range(0, lags):
+            date_col_name = "date_lag_" + str(lag)
+            oos_df[date_col_name] = oos_df.index
+            oos_df[date_col_name] = oos_df[date_col_name] - dt.timedelta(days=lag)
+            needed_interest = interest_df[interest_df.index.isin(oos_df[date_col_name])]
+            needed_interest_colnames = list(interest_df.columns)
+            needed_interest_colnames = [x.replace(" ", "")+"_interest_lag_"+str(lag+1) for x in needed_interest_colnames]
+            needed_interest.columns = needed_interest_colnames
+            oos_df = pd.merge(oos_df, needed_interest, left_on=date_col_name, right_index=True, how="outer")
+            oos_df = oos_df.dropna(axis=1, how="all")
+            oos_df = oos_df.drop(date_col_name, axis=1)
     if analyst_recs:
         for tckr in tckr_set:
-            recs = get_analyst_recommendations(tckr)["analyst_recs_lagged"]
-            ret_df = pd.merge(ret_df, recs, left_index=True, right_index=True)
-            ret_df = ret_df.rename(columns={"analyst_recs_lagged": str(tckr)+"_analyst_recs"})
-    return ret_df
-
-#get_data({"AAPL", "MSFT"}, 2, "AAPL_log_return", analyst_recs=True, keywords=["Apple stock"],
- #              start_year=2012, start_month=1, end_year=2014, end_month=1).to_csv("random_forest_test_data.csv")
+            recs = get_analyst_recommendations(tckr)["rolling_avg"]
+            ret_df = pd.merge(ret_df, recs, left_index=True, right_index=True, how="outer")
+            oos_df = pd.merge(oos_df, recs, left_index=True, right_index=True, how="outer")
+            ret_df = ret_df.dropna(axis=1, how="all")
+            oos_df = oos_df.dropna(axis=1, how="all")
+            ret_df["rolling_avg"] = ret_df["rolling_avg"].shift(1)
+            ret_df = ret_df.rename(columns={"rolling_avg": str(tckr)+"_analyst_recs"})
+            oos_df = oos_df.rename(columns={"rolling_avg": str(tckr)+"_analyst_recs"})
+    #print(oos_df)
+    return ret_df, oos_df
 
 def train_validate_test_split(df):
     """
@@ -177,11 +196,29 @@ def get_best_random_forest(train, validate, key_to_predict, min_depth=1, max_dep
             best_model = rf
     return rf
 
-def back_test_model(df, model_tuple, key_to_predict, max_lags):
+def get_best_gradient_booster(train, validate, key_to_predict, min_depth = 1, max_depth=5):
+    train, validate = train.fillna(0), validate.fillna(0)
+    X_train = train.loc[:, train.columns != key_to_predict]
+    Y_train = train[key_to_predict]
+    X_validate = validate.loc[:, validate.columns != key_to_predict]
+    Y_validate = validate[key_to_predict]
+    best_model, best_mse = None, None
+    for depth in range(min_depth, max_depth):
+        gb = GradientBoostingRegressor(max_depth = depth)
+        gb.fit(X_train, Y_train)
+        preds = gb.predict(X_validate)
+        validate_copy = validate.copy(deep=True)
+        validate_copy["preds"] = preds
+        validate_copy["error"] = validate_copy[key_to_predict] - validate_copy["preds"]
+        mse = np.average((validate_copy["error"] ** 2))
+        if (best_mse is None) or (mse < best_mse):
+            best_model = gb
+    return gb
+
+def back_test_model(df, key_to_predict, max_lags):
     """
     With the selected "best" model backtests on the test set to check its returns
     :param df: Pandas DataFrame
-    :param model_tuple: model tuple containing BIC, formula, model object
     :param key_to_predict: the column to predict
     :param max_lags: the maximum number of lags the model needs
     :return:
@@ -211,69 +248,64 @@ def back_test_model(df, model_tuple, key_to_predict, max_lags):
               "underlying_sharpe": underlying_sharpe}
     return output
 
-def giga_function(tckr_set, key_to_predict, max_lags, models_to_evaluate):
-    data = get_yfinance_data(tckr_set)
-    data = get_log_return_df(data)
-    train, validate, test = train_validate_test_split(data)
-    top_models = find_lin_reg_models(train.copy(deep=True), key_to_predict, max_lags, models_to_evaluate)
-    validated_model = evaluate_models(validate.copy(deep=True), top_models, key_to_predict, max_lags)
-    bic, formula, model = validated_model
-    y = test.copy(deep=True)
-    y["preds"] = model.predict(y)
-    backtest_results = back_test_model(y, validated_model, key_to_predict, max_lags)
-    return validated_model, backtest_results
-
-def main(tckr_set, lags, key_to_predict, models_to_evaluate, keywords=None, start_year = 2004, start_month = 1,
+def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywords=None, start_year = 2004, start_month = 1,
              end_year = None, end_month = None, analyst_recs = False):
-    data = get_data(tckr_set, lags, key_to_predict, keywords, start_year, start_month, end_year, end_month,
+    model_results = []
+    data, oos_data = get_data(tckr_set, lags, key_to_predict, keywords, start_year, start_month, end_year, end_month,
                     analyst_recs)
+    #print(data)
+    print("OOS_DATA")
+    print(oos_data)
     train, validate, test = train_validate_test_split(data)
+    test_final = test.copy(deep=True)
     top_models = find_lin_reg_models(train.copy(deep=True), key_to_predict, lags, models_to_evaluate)
     validated_model = evaluate_models(validate.copy(deep=True), top_models, key_to_predict, lags)
     bic, formula, model = validated_model
     test_copy = test.copy(deep=True)
     test_copy["preds"] = model.predict(test_copy)
-    backtest_results = back_test_model(test_copy, validated_model, key_to_predict, lags)
+    backtest_results = back_test_model(test_copy, key_to_predict, lags)
     print(backtest_results)
+    lin_sharpe = backtest_results["sharpe"]
+    model_results.append((lin_sharpe, model))
 
     rf = get_best_random_forest(train, validate, key_to_predict)
     test_copy = test.copy(deep=True).fillna(0)
     test_copy["preds"] = rf.predict(test_copy.loc[:, test_copy.columns != key_to_predict])
-    backtest_results = back_test_model(test_copy, validated_model, key_to_predict, lags)
+    backtest_results = back_test_model(test_copy, key_to_predict, lags)
     print(backtest_results)
+    rf_sharpe = backtest_results["sharpe"]
+    model_results.append((rf_sharpe, rf))
 
-main({"AAPL", "MSFT"}, 2, "AAPL_log_return", 2, ["Apple stock"], 2013, 1, 2021, 5, True)
+    gb = get_best_gradient_booster(train, validate, key_to_predict)
+    test_copy = test.copy(deep=True).fillna(0)
+    test_copy["preds"] = gb.predict(test_copy.loc[:, test_copy.columns != key_to_predict])
+    backtest_results = back_test_model(test_copy, key_to_predict, lags)
+    print(backtest_results)
+    gb_sharpe = backtest_results["sharpe"]
+    model_results.append((gb_sharpe, gb))
 
-#data = pd.read_csv("testing_data.csv")
-#data = data.set_index("Date")
-#train, validate, test = train_validate_test_split(data)
-"""
-GET BEST LINEAR MODEL
-print(train)
-print(validate)
-top_models = find_lin_reg_models(train, "AAPL_log_return", 3, 3)
-validated_model = evaluate_models(validate, top_models, "AAPL_log_return", 3)
-backtest_results = back_test_model(test, validated_model, "AAPL_log_return", 3)
-print(backtest_results)
-print(validated_model)
-"""
+    best_model_tup = max(model_results)
+    best_sharpe, best_model = best_model_tup
+    return best_model.predict(oos_data.drop(key_to_predict, axis=1).fillna(0))[-1]
 
-# random forest: https://towardsdatascience.com/random-forest-in-python-24d0893d51c0
+#def get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywords=None, start_year = 2004, start_month = 1,
+             #end_year = None, end_month = None, analyst_recs = False):
 
 
-#get_data({"AAPL", "MSFT"}, 3, "AAPL_log_return", keywords=["Apple stock", "Microsoft stock"], end_year=2005, end_month=1).to_csv("testing_data.csv")
+#MODEL_SPECS = {"GME": ({"GME", "AMC", "BB"}, 3, "GME_log_return", 3, ["GME"], 2021, 8, 2022, 2, True)}
 
-"""
-tckr_set = {"AAPL", "MSFT"}
-keywords = ["Apple stock"]
-ret_df = get_log_return_df(get_yfinance_data(tckr_set))
-ret_df["date_copy"] = ret_df.index
-ret_df["date_copy"] = pd.to_datetime(ret_df["date_copy"])
-ret_df["date_lag_1"] = ret_df["date_copy"] - dt.timedelta(days=1)
+def get_expected_returns(model_specs):
+    expected_returns = []
+    tckrs = set(model_specs.keys())
+    log_returns = get_log_return_df(get_yfinance_data(sorted(tckrs)))
+    print(log_returns.dropna())
+    for tckr, model_spec in sorted(model_specs.items()):
+        tckr_set, lags, key_to_predict, models_to_evaluate, keywords, start_year, start_month,\
+        end_year, end_month, analyst_recs = model_spec
+        expected_ret = get_best_oos_fcast(tckr_set, lags, key_to_predict, models_to_evaluate, keywords=keywords, start_year=start_year,
+                           start_month=1, end_year=end_year, end_month=end_month, analyst_recs=analyst_recs)
+        expected_returns.append(expected_ret)
+    num_assets = len(expected_returns)
+    expected_returns = np.array(expected_returns).reshape(num_assets, -1).T
+    return expected_returns, log_returns
 
-interest_df = daily_interest_table(keywords, 2004, 7)
-print(ret_df)
-print(interest_df)
-"""
-# could just merge on date but would lose google trends info on weekends...
-# could also create lags of date column and then merge in masked google trends on that column
