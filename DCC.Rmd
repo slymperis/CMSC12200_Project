@@ -1,0 +1,45 @@
+---
+title: "DCC GARCH"
+author: "Steven Lymperis"
+date: "3/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = FALSE, warning = FALSE, echo = FALSE}
+library(rmgarch)
+#@Manual{Ghalanos_2014,
+#author = {Alexios Galanos},
+#title = {{rmgarch}: Multivariate GARCH models.},
+#year = {2019},
+#note = {R package version 1.3-6.}}
+
+library(readr)
+
+returns = read_csv("/Users/stevenlymperis/UChicago Year 3/CMSC 12200/steve_data.csv")
+cols_dont_want = "Date"
+returns = returns[, !(colnames(returns) %in% cols_dont_want)]
+returns = na.omit(returns)
+univariate_spec <- ugarchspec(mean.model = list(armaOrder = c(0,0)),
+                                                        variance.model = list(garchOrder = c(1,1),
+                                                                            variance.targeting = FALSE, 
+                                                                            model = "sGARCH"),
+                                                        distribution.model = "std")
+
+dims <- dim(returns)[2]
+ 
+dcc_spec <- dccspec(uspec = multispec(replicate(dims, univariate_spec)),
+                                                dccOrder = c(1,1),
+                                                distribution = "mvt")
+
+dcc_fit <- dccfit(dcc_spec, data=returns)
+
+forecasts <- dccforecast(dcc_fit, n.ahead = 1)
+
+print(dcc_fit)
+print(forecasts)
+
+```
