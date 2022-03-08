@@ -4,6 +4,9 @@ from pytrends import dailydata
 import pandas as pd
 import datetime
 import dateutil
+import yfinance_scraper
+import statsmodels as sm
+import matplotlib as plt
 from dateutil import relativedelta
 
 # this is the connection to Google in English and on EST (matches NYSE)
@@ -93,4 +96,75 @@ def related_queries(keyword, time):
     request.build_payload([keyword], timeframe=timeframes[time])
 
     return request.related_queries()[keyword]['top']
+
+
+def search_heat(ticker, keywords):
+    '''
+
+    Trains and tests an OLS model to predict Ticker log returns with keyword
+
+    search density
+
+
+
+    Inputs:
+
+    ticker (string): stock ticker whose log returns we want to predict
+
+    term_list (list of strings): list of search strings to test as predictors
+
+
+
+    Returns: a plot of the residuals over the past year
+
+
+
+    WARNING: as a security measure, Google forces a 60 second cooldown every
+
+    100 terms, which will occur at least once per additional search term
+
+    '''
+
+    # This will grab the log returns dataframe
+
+    ticker_set = set([ticker])
+
+    dic = yfinance_scraper.get_yfinance_data(ticker_set)
+
+    log_returns = yfinance_scraper.get_log_return_df(dic)
+
+    # We will train on the 4 years preceeding last year and test on last year
+
+    # This builds the complete search density dataset
+
+    prev_five_years = datetime.date.today() + relativedelta.relativedelta(years=-5)
+
+    search_density = daily_interest_table(keywords, today_tuple.year, today_tuple.month, prev_five_years.year,
+                                          prev_five_years.month)
+
+    one_year_ago = (datetime.date.today() + relativedelta.relativedelta(years=-1)).strftime('%Y-%m-%d')
+
+    # we decompose the search density into training and testing periods
+
+    train_search_density = search_density[search_density.index < one_year_ago]
+
+    test_search_density = search_density[search_density.index >= one_year_ago]
+
+    # merge the training and testing frames with the log returns frame
+
+    train_frame = pd.merge(log_returns, train_search_density, left_index=True, right_index=True)
+
+    test_frame = pd.merge(log_returns, test_search_density, left_index=True, right_index=True)
+
+    model = sm.OLS(train_frame.iloc[:, 0], sm.add_constant(train_frame.iloc[:, 1:])).fit()
+
+    predictions = model.predict(sm.add_constant(test_frame.iloc[:, 1:]))
+
+    observations = test_frame.iloc[:, 0]
+
+    residuals = observations.sub(predictions)
+
+    residuals.plot(title="Residuals Over This Year")
+
+    plt.show()
 
