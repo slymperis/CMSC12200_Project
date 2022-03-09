@@ -59,6 +59,7 @@ def index(request):
     context = {}
     res = None 
     if request.method == 'GET':
+        print("If request.method == GET")
         form = SearchForm(request.GET)
         if form.is_valid():
             args = {}
@@ -74,7 +75,25 @@ def index(request):
                 args_val.append(True)
             else:
                 args_val.append(False)
+            
+            args[key] = tuple(args_val)
+
+            try: 
+                res = main(args)
+
+            except Exception as e:
+                print('Exception caught')
+                bt = traceback.format_exception(*sys.exc_info()[:3])
+                context['err'] = """
+                An exception was thrown in find_courses:
+                <pre>{}
+{}</pre>
+                """.format(e, '\n'.join(bt))
+
+                res = None
+
     else:
+        print("Else ")
         form = SearchForm()
     
     if res is None:
@@ -89,6 +108,7 @@ def index(request):
     else:
         columns, result = res
 
+    context['form'] = form
     return render(request, 'index.html', context)
 
     

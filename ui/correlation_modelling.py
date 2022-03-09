@@ -14,10 +14,10 @@ def forecast_var_cov_matrix(df):
     :param df: DataFrame of log returns
     :return: DataFrame of tomorrow's forecasted variance-covariance matrix
     """
-    utils = importr("utils")
-    utils.chooseCRANmirror(ind=1)
-    utils.install_packages(StrVector(("rmgarch",)))
-    rmgarch = importr("rmgarch")
+    #utils = importr("utils")
+    #utils.chooseCRANmirror(ind=1)
+    #utils.install_packages("rmgarch")
+    #rmgarch = importr("rmgarch")
     with localconverter(robjects.default_converter + pandas2ri.converter):
         r_from_pd_df = robjects.conversion.py2rpy(df)
     robjects.r('''
