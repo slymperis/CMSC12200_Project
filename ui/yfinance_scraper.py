@@ -86,7 +86,7 @@ def get_analyst_recommendations(tckr):
     scores = []
     for rating in recs["To Grade"]:
         rating = rating.lower()
-        if rating in POSITIVE:
+        if rating in POSITIVE: # Classifies strings corresponding to positive recommendations as a 1, negative as a -1
             score = 1
         elif rating in NEGATIVE:
             score = -1
@@ -101,7 +101,7 @@ def get_analyst_recommendations(tckr):
     print(start_date, end_date)
     total_days = (end_date - start_date).days
     date_list = []
-    for day in range(total_days+1):
+    for day in range(total_days+1): # Used to create a blank DataFrame with every day that can then be merged with the analyst recommendations so we don't miss any days
         date_list.append((start_date + dt.timedelta(days=day)))
     date_df = pd.DataFrame(date_list, columns=["Date"])
     date_df = date_df.set_index("Date")
@@ -111,8 +111,8 @@ def get_analyst_recommendations(tckr):
     merged_df = pd.merge(date_df, recs_sum, left_index=True, right_index=True, how="outer")
     merged_df = pd.merge(merged_df, recs_counts, left_index=True, right_index=True, how="outer")
     merged_df = merged_df.rename(columns={"scores_x": "sum", "scores_y": "count"})
-    sum_roll = merged_df["sum"].rolling(90, 0).apply(lambda x: np.nansum(x))
-    count_roll = merged_df["count"].rolling(90, 0).apply(lambda x: np.nansum(x))
+    sum_roll = merged_df["sum"].rolling(90, 0).apply(lambda x: np.nansum(x)) # Gets the rolling average of a 90 day window of analyst recommendations {-1, 1}
+    count_roll = merged_df["count"].rolling(90, 0).apply(lambda x: np.nansum(x)) # making sure to seperately count the number of reports and ignore NaNs
     merged_df["rolling_avg"] = sum_roll/count_roll
     merged_df = merged_df[90:]
     return merged_df

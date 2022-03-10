@@ -14,13 +14,14 @@ def forecast_var_cov_matrix(df):
     :param df: DataFrame of log returns
     :return: DataFrame of tomorrow's forecasted variance-covariance matrix
     """
-    #utils = importr("utils")
-    #utils.chooseCRANmirror(ind=1)
-    #utils.install_packages("rmgarch")
-    #rmgarch = importr("rmgarch")
     with localconverter(robjects.default_converter + pandas2ri.converter):
+        utils = importr("utils")
+        utils.chooseCRANmirror(ind=1)
+        utils.install_packages(StrVector(("rmgarch",))) # installs necessary R packages
+        rmgarch = importr("rmgarch")
+    with localconverter(robjects.default_converter + pandas2ri.converter): # converts pandas DataFrame to R DataFrame
         r_from_pd_df = robjects.conversion.py2rpy(df)
-    robjects.r('''
+    robjects.r(''' # Fits DCC model and forecasts one step out of sample
         library(rmgarch)
         dcc_fcast <- function(returns, days_to_fcast){
                     returns <- returns[, ! names(returns) %in% "Date", drop = F]
@@ -42,6 +43,6 @@ def forecast_var_cov_matrix(df):
     r_output = dcc_fcast(r_from_pd_df, 1)
     dcc_model_r = r_output[0]
     fcast_var_cov_r = r_output[1]
-    with localconverter(robjects.default_converter + pandas2ri.converter):
+    with localconverter(robjects.default_converter + pandas2ri.converter): # converts R DataFrame containing variance-covariance matrix back to Pandas DataFrame
         fcast_var_cov = robjects.conversion.rpy2py(fcast_var_cov_r)
     return fcast_var_cov
