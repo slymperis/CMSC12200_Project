@@ -28,6 +28,7 @@ def get_portfolio_sharpe(var_cov_matrix, expected_returns, weights):
     """
     variance = (weights.T * var_cov_matrix * weights)
     sd = float(np.sqrt(variance))
+    expected_returns = np.exp(expected_returns) - 1
     portfolio_er = float(expected_returns @ weights)
     sharpe = portfolio_er/sd
     return sharpe, portfolio_er, sd
@@ -41,7 +42,10 @@ def get_random_weights(num_assets):
     weights = np.random.random(num_assets) * 2 - 1
     weights /= weights.sum()
     weights = np.array(weights).reshape(num_assets, -1)
-    return weights
+    if np.any(weights > 1) or np.any(weights < -1):
+        return get_random_weights(num_assets)
+    else:
+        return weights
 
 def portfolio_weights_monte_carlo(df, expected_returns, var_cov_matrix, iterations=1000000):
     """
@@ -99,7 +103,7 @@ def main(model_specs, iterations=1000000):
 
 # SAMPLE USE OF MAIN
 #MODEL_SPECS = {"AAPL": ({"AAPL", "INTC", "MSFT"}, 3, "AAPL_log_return", 3, None, 2021, 5, 2022, 2, True),
- #              "GME": ({"GME", "AMC", "BB"}, 3, "GME_log_return", 3, None, 2021, 5, 2022, 2, True),
-  #             "AMC": ({"AMC", "GME"}, 2, "AMC_log_return", 3, None, 2021, 5, 2022, 2, True)}
+              #"GME": ({"GME", "AMC", "BB"}, 3, "GME_log_return", 3, None, 2021, 5, 2022, 2, True),
+             #"AMC": ({"AMC", "GME"}, 2, "AMC_log_return", 3, None, 2021, 5, 2022, 2, True),
+               #"GOOGL": ({"GOOGL", "AAPL"}, 2, "GOOGL_log_return", 3, None, 2021, 5, 2022, 2, True)}
 #print(main(MODEL_SPECS))
-
