@@ -17,16 +17,16 @@ from portfolio_optimization import main
 
 class SearchForm(forms.Form):
     stock_query = forms.CharField(
-        label = 'Stock Ticker:', 
-        help_text = 'e.g. AAPL', 
+        label = 'Stock Ticker:',
+        help_text = 'e.g. AAPL',
         required = True)
     regress_ticker = forms.CharField(
         label = 'Ticker Data to Regress On:',
         help_text = 'e.g. AAPL, INTC, MSFT (separated by commas)',
         required = True)
     num_models = forms.CharField(
-        label = 'Number of Models to Evaluate:', 
-        help_text = 'e.g. 3', 
+        label = 'Number of Models to Evaluate:',
+        help_text = 'e.g. 3',
         required = True)
     num_lags = forms.CharField(
         label = 'Number of Lags',
@@ -47,7 +47,7 @@ class SearchForm(forms.Form):
     end_time_month = forms.CharField(
         label = 'End Time (Month)',
         help_text = 'e.g. 5 (May)',
-        required = True) 
+        required = True)
     end_time_year = forms.CharField(
         label = 'End Time (Year)',
         help_text = 'e.g. 2022',
@@ -59,6 +59,7 @@ def index(request):
     context = {}
     res = None 
     if request.method == 'GET':
+        print("If request.method == GET")
         form = SearchForm(request.GET)
         if form.is_valid():
             args = {}
@@ -70,13 +71,31 @@ def index(request):
             else:
                 args_val.append(None)
             args_val.append(start_time_year, start_time_month, end_time_year, end_time_month)
-            if analyst_recs: 
+            if analyst_recs:
                 args_val.append(True)
             else:
                 args_val.append(False)
+           
+            args[key] = tuple(args_val)
+
+            try:
+                res = main(args)
+
+            except Exception as e:
+                print('Exception caught')
+                bt = traceback.format_exception(*sys.exc_info()[:3])
+                context['err'] = """
+                An exception was thrown in find_courses:
+                <pre>{}
+{}</pre>
+                """.format(e, '\n'.join(bt))
+
+                res = None
+
     else:
+        print("Else ")
         form = SearchForm()
-    
+   
     if res is None:
         context['result'] = None
     elif isinstance(res, str):
@@ -89,6 +108,6 @@ def index(request):
     else:
         columns, result = res
 
+    context['form'] = form
     return render(request, 'index.html', context)
-
     
