@@ -16,15 +16,6 @@ from django.http import HttpResponse
 from portfolio_optimization import main
 from django.views.generic import TemplateView, DetailView
 from django.views import View
-
-'''class HomePageView(DetailView):
-    template_name = "home.html"
-    def get(self, request):
-        context = {}
-        form = TrendsForm()
-        context['form'] = form
-        
-        return render(request, 'home.html', context)'''
         
 class TrendsPageView(DetailView): 
     template_name = "trends.html"
@@ -34,11 +25,12 @@ class TrendsPageView(DetailView):
         if request.method == 'GET':
             form = TrendsForm(request.GET)
             if form.is_valid():
-                if key_words:
+                if TrendsForm.key_words:
                     words_lst = {key_words}
 
             try:
                 res = search_heat(stock_ticker, words_lst)
+                print(res)
        
             except Exception as e:
                 print('Exception caught')
@@ -179,7 +171,3 @@ class SearchForm(forms.Form):
         required = True)
     analyst_recs = forms.BooleanField(label = 'Include Analyst Recommendations',
         required = False)
-
-class HomeForm(forms.Form):
-    text = forms.CharField(
-        label = 'Jaws Home',)
