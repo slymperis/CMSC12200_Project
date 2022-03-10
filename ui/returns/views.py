@@ -17,6 +17,12 @@ from portfolio_optimization import main
 from django.views.generic import TemplateView, DetailView
 from django.views import View
         
+COLUMN_NAMES = dict(
+    b_weights = 'Best Weights'
+    expected_return = 'Optimal Portfolio Expected Return'
+    expected_SD = 'Optimal Portfolio Standard Deviation'
+)
+
 class TrendsPageView(DetailView): 
     template_name = "trends.html"
     def get(self, request):
@@ -115,10 +121,16 @@ class PortfolioPageView(TemplateView):
             context['result'] = None
             context['err'] = ('Return of portfolio_optimization has the wrong data type.')
         else:
-            columns, result = res
+            weights, result_er, result_op = res
+
+            context['weights'] = weights
+            context['result_er'] = result_er 
+            context['result_op'] = result_op
+            context['columns'] = [COLUMN_NAMES.get(col, col) for col in columns]    #don't really know what this does
+
 
         context['form'] = form
-        
+
         return render(request, 'index.html', context)
 
 
