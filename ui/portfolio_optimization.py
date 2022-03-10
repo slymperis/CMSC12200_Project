@@ -26,10 +26,10 @@ def get_portfolio_sharpe(var_cov_matrix, expected_returns, weights):
     :param weights: NumPy array of portfolio weights
     :return: Sharpe ratio (float)
     """
-    variance = (weights.T * var_cov_matrix * weights)
+    variance = (weights.T * var_cov_matrix * weights) # matrix multiplication for portfolio variance
     sd = float(np.sqrt(variance))
-    expected_returns = np.exp(expected_returns) - 1
-    portfolio_er = float(expected_returns @ weights)
+    expected_returns = np.exp(expected_returns) - 1 # need to convert to simple returns from log returns
+    portfolio_er = float(expected_returns @ weights) # matrix multiplication for portfolio expected return
     sharpe = portfolio_er/sd
     return sharpe, portfolio_er, sd
 
@@ -42,14 +42,15 @@ def get_random_weights(num_assets):
     weights = np.random.random(num_assets) * 2 - 1
     weights /= weights.sum()
     weights = np.array(weights).reshape(num_assets, -1)
-    if np.any(weights > 1) or np.any(weights < -1):
-        return get_random_weights(num_assets)
+    if np.any(weights > 1) or np.any(weights < -1): # throws out weights larger or smaller than 1 or -1
+        return get_random_weights(num_assets) # need this because Markowitz portfolio optimization is very sensitive to expected returns estimates and can result in "theoretically correct" weights of > 100
     else:
         return weights
 
 def portfolio_weights_monte_carlo(df, expected_returns, var_cov_matrix, iterations=1000000):
     """
     Runs a Monte Carlo simulation to approximate optimal portfolio weights for an arbitrary number of assets
+    As the number of assets increases, a simple grid search becomes too expensive and in many cases impossible
     :param df: DataFrame of log returns
     :param expected_returns: Array of expected returns
     :param var_cov_matrix: Forecasted variance-covariance matrix
