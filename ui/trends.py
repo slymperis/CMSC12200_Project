@@ -5,8 +5,8 @@ import pandas as pd
 import datetime
 import dateutil
 import yfinance_scraper
-import statsmodels as sm
-import matplotlib as plt
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
 from dateutil import relativedelta
 
 # this is the connection to Google in English and on EST (matches NYSE)
