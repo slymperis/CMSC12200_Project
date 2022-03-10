@@ -33,7 +33,7 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
     oos_df = ret_df.copy(deep=True)[-100:]
     create_df_lags(ret_df, key_to_predict, lags)
     create_df_lags(oos_df, key_to_predict, lags, oos=True)
-    if keywords is not None:
+    if keywords is not None: # gets keywords from Google trends
         if (end_year is None) or (end_month is None):
             today = dt.datetime.now()
             interest_df = daily_interest_table(keywords, today.year, today.month, start_year=start_year,
@@ -41,8 +41,8 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
         else:
             interest_df = daily_interest_table(keywords, end_year, end_month,
                                                start_year=start_year, start_month=start_month)
-        for lag in range(1, lags+1):
-            date_col_name = "date_lag_" + str(lag)
+        for lag in range(1, lags+1): # merges in previous days Google trends depending on how many lags we want
+            date_col_name = "date_lag_" + str(lag) # this is necessary because financial data skips certain days (weekends) but we want the Google trends lag to be able to be on a weekend
             ret_df[date_col_name] = ret_df.index
             ret_df[date_col_name] = ret_df[date_col_name] - dt.timedelta(days=lag)
             lag_interest = interest_df[interest_df.index.isin(ret_df[date_col_name])]
@@ -52,7 +52,7 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
             ret_df = pd.merge(ret_df, lag_interest, left_on=date_col_name, right_index=True, how="outer")
             ret_df = ret_df.dropna(axis=1, how="all")
             ret_df = ret_df.drop(date_col_name, axis=1)
-        for lag in range(0, lags):
+        for lag in range(0, lags): # merges in previous days Google trends into the delagged DataFrame that will be used for forecasting tomorrow's portfolio
             date_col_name = "date_lag_" + str(lag)
             oos_df[date_col_name] = oos_df.index
             oos_df[date_col_name] = oos_df[date_col_name] - dt.timedelta(days=lag)
@@ -63,7 +63,7 @@ def get_data(tckr_set, lags, key_to_predict, keywords=None, start_year = 2004, s
             oos_df = pd.merge(oos_df, needed_interest, left_on=date_col_name, right_index=True, how="outer")
             oos_df = oos_df.dropna(axis=1, how="all")
             oos_df = oos_df.drop(date_col_name, axis=1)
-    if analyst_recs:
+    if analyst_recs: # merges in analyst recommendations
         for tckr in tckr_set:
             recs = get_analyst_recommendations(tckr)["rolling_avg"]
             ret_df = pd.merge(ret_df, recs, left_index=True, right_index=True, how="outer")
