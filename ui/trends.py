@@ -132,6 +132,7 @@ def search_heat(ticker, keywords):
     dic = yfinance_scraper.get_yfinance_data(ticker_set)
 
     log_returns = yfinance_scraper.get_log_return_df(dic)
+    log_returns = log_returns.abs()
 
     # We will train on the 4 years preceeding last year and test on last year
 
@@ -161,10 +162,9 @@ def search_heat(ticker, keywords):
     predictions = model.predict(sm.add_constant(test_frame.iloc[:, 1:]))
 
     observations = test_frame.iloc[:, 0]
-
     residuals = observations.sub(predictions)
 
-    residuals.plot(title="Residuals Over This Year")
-
+    # derive plot and summarize results of OLS
+    plt.scatter(predictions, residuals)
     plt.show()
-
+    print(model.summary())
