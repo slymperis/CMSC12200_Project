@@ -3,6 +3,9 @@ import traceback
 import sys
 import csv
 import os
+import numpy as np
+
+from trends import search_heat
 
 from functools import reduce
 from operator import and_
@@ -16,59 +19,83 @@ from django.http import HttpResponse
 from portfolio_optimization import main
 from django.views.generic import TemplateView, DetailView
 from django.views import View
+
+from PIL import Image
+import base64
+from io import BytesIO
         
-COLUMN_NAMES = dict(
+'''COLUMN_NAMES = dict(
     b_weights = 'Best Weights'
     expected_return = 'Optimal Portfolio Expected Return'
     expected_SD = 'Optimal Portfolio Standard Deviation'
-)
+)'''
+
+err_string = """
+             An exception was thrown in find_courses:
+                         <pre>{}
+             {}</pre>
+             """
+no_keys = "form does not contain key words"
+
+default_img = np.array([[[255, 255, 255]]], dtype=np.uint8)
+
+# class AllPageView(DetailView):
+
+#     def get(self, request):
+
+def get_uri_from_rgbarray(rgb_array):
+    img = Image.fromarray(rgb_array, 'RGB')  
+    data = BytesIO()
+    img.save(data, "JPEG") # pick your format
+    data64 = base64.b64encode(data.getvalue())
+    return u'data:img/jpeg;base64,'+data64.decode('utf-8') 
+        
 
 class TrendsPageView(DetailView): 
     template_name = "trends.html"
     def get(self, request):
         context = {}
-        res = None 
-        if request.method == 'GET':
-            form = TrendsForm(request.GET)
-            if form.is_valid():
-                if TrendsForm.key_words:
-                    words_lst = {key_words}
+        keywords_str = []
+
+        assert request.method == 'GET'
+        form = TrendsForm(request.GET)
+        if form.is_valid():
+            assert 'key_words' in form.cleaned_data, no_keys
+            for word in form.cleaned_data['key_words'].split(): 
+                keywords_str.append(word)
+            stock_ticker = form.cleaned_data['stock_ticker']
 
             try:
-                res = search_heat(stock_ticker, words_lst)
-                print(res)
-       
+                image, summary = search_heat(stock_ticker, keywords_str)
             except Exception as e:
                 print('Exception caught')
                 bt = traceback.format_exception(*sys.exc_info()[:3])
-                context['err'] = """
-                An exception was thrown in find_courses:
-                <pre>{}
-    {}</pre>
-                """.format(e, '\n'.join(bt))
+                print(err_string.format(e, '\n'.join(bt)))
+                image, summary = default_img, ""
+        
+            try:
+                context['image'] = get_uri_from_rgbarray(image)
+            except Exception as e:
+                print('Exception caught')
+                bt = traceback.format_exception(*sys.exc_info()[:3])
+                print(err_string.format(e, '\n'.join(bt)))
+                context['image'] = None
+                context['err'] = ('Regression plot RGB array has wrong data type.')
 
-                res = None 
+            context['summary'] = summary
+            if not isinstance(context['summary'], str):
+                context['summary'] = ""
+                context['err'] = ('Summary has wrong data type.')
 
         else:
-            form = TrendsForm()
-    
-        if res is None:
-            context['result'] = None
-        elif isinstance(res, str):
-            context['result'] = None
-            context['err'] = res
-            result = None
-        elif not _valid_result(res):
-            context['result'] = None
-            context['err'] = ('Return of trends has the wrong data type.')
-        else:
-            columns, result = res
+            context['image'] = get_uri_from_rgbarray(default_img)
+            context['summary'] = ""
 
         context['form'] = form
 
         return render(request, 'trends.html', context)
 
-class PortfolioPageView(TemplateView): 
+class PortfolioPageView(DetailView): 
     template_name = "index.html"
     def get(self, request):
         context = {}
@@ -108,9 +135,8 @@ class PortfolioPageView(TemplateView):
                     res = None
 
         else:
-            print("Else ")
             form = SearchForm()
-    
+            
         if res is None:
             context['result'] = None
         elif isinstance(res, str):
@@ -143,6 +169,7 @@ class TrendsForm(forms.Form):
         label = 'Key Words to Query for Google Trends:',
         help_text = 'e.g. iPhone',
         required = False)
+    
 
 class SearchForm(forms.Form):
     stock_query = forms.CharField(

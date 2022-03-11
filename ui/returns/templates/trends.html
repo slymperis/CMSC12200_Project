@@ -20,7 +20,13 @@
                 {{ form }}
                 </table>
                 <input type="submit" value="Click Here to Analyze Trends" />
+                <br/>
+                <img src={{ image }} />
+                <br/>
+                {{ summary|safe }}
+                <br/>
             </form>
+        </div>
     </body>
 </html>
 {% endblock content %}

@@ -2,11 +2,14 @@ import pytrends
 from pytrends.request import TrendReq
 from pytrends import dailydata
 import pandas as pd
+import numpy as np
 import datetime
 import dateutil
 import yfinance_scraper
 import statsmodels.api as sm
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('agg')
 from dateutil import relativedelta
 
 # this is the connection to Google in English and on EST (matches NYSE)
@@ -165,6 +168,10 @@ def search_heat(ticker, keywords):
     residuals = observations.sub(predictions)
 
     # derive plot and summarize results of OLS
+    fig = plt.figure()
     plt.scatter(predictions, residuals)
-    plt.show()
-    print(model.summary())
+    fig.canvas.draw()
+    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    summary = model.summary().as_html()
+    return image, summary

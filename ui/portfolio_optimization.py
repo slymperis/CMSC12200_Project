@@ -103,6 +103,7 @@ def main(model_specs, iterations=1000000):
 # forecast would be for tomorrow which is what we generally want
 
 # SAMPLE USE OF MAIN
+
 #MODEL_SPECS = {"AAPL": ({"AAPL", "INTC", "MSFT"}, 3, "AAPL_log_return", 3, None, 2021, 5, 2022, 2, True),
               #"GME": ({"GME", "AMC", "BB"}, 3, "GME_log_return", 3, None, 2021, 5, 2022, 2, True),
              #"AMC": ({"AMC", "GME"}, 2, "AMC_log_return", 3, None, 2021, 5, 2022, 2, True),
