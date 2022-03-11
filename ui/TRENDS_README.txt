@@ -6,6 +6,15 @@ A GUIDE TO TRENDS.PY
     - Put daily google trends data into a dataframe to interact with the larger MAIN program
     - Allow the user to test theses regarding market sentiment and how an equity trades
 
+REQUIRED MODULES/LIBRARIES:
+- pytrends
+- pandas
+- numpy
+- datetime
+- dateutil
+- statsmodels.api
+- mathplotlib
+
 FUNCTIONS FOR THE USER:
 
 search_heat:
