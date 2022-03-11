@@ -49,6 +49,8 @@ def get_log_return_df(d):
     for ticker, df in d.items():
         col_names.append(ticker+"_log_return")
         log_return_series = df["log_return"]
+        if log_return_series.index[-1] == log_return_series.index[-2]: # Needed to prevent Yahoo finance API issues if the code is run shortly after midnight
+            log_return_series = log_return_series[:-1]
         series.append(log_return_series)
     combined_df = pd.concat(series, keys=col_names, axis=1)
     return combined_df
