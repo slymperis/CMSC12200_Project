@@ -7,6 +7,7 @@ import numpy as np
 import datetime as dt
 
 from trends import search_heat
+from portfolio_optimization import main
 
 from functools import reduce
 from operator import and_
@@ -17,20 +18,13 @@ from django import forms
 from django.shortcuts import render
 from django.http import HttpResponse
 
-from portfolio_optimization import main
-from django.views.generic import TemplateView, DetailView
+from django.views.generic import DetailView
 from django.views import View
 
 from PIL import Image
 import base64
 from io import BytesIO
         
-'''COLUMN_NAMES = dict(
-    b_weights = 'Best Weights'
-    expected_return = 'Optimal Portfolio Expected Return'
-    expected_SD = 'Optimal Portfolio Standard Deviation'
-)'''
-
 err_string = """
              An exception was thrown in find_courses:
                          <pre>{}
@@ -40,18 +34,21 @@ no_keys = "form does not contain key words"
 
 default_img = np.array([[[255, 255, 255]]], dtype=np.uint8)
 
-# class AllPageView(DetailView):
-
-#     def get(self, request):
-
 def get_uri_from_rgbarray(rgb_array):
+    '''
+        Helper function used in the get method of TrendsPageView; aids in 
+        displaying an image to the user depending on their inputs. 
+
+        Input: rgb_array
+        Output: uri
+    '''
     img = Image.fromarray(rgb_array, 'RGB')  
     data = BytesIO()
-    img.save(data, "JPEG") # pick your format
+    img.save(data, "JPEG")
     data64 = base64.b64encode(data.getvalue())
     return u'data:img/jpeg;base64,'+data64.decode('utf-8') 
         
-
+#View Class for JAWS Trends, which calls search_heat in trends.py
 class TrendsPageView(DetailView): 
     template_name = "trends.html"
     def get(self, request):
@@ -96,6 +93,7 @@ class TrendsPageView(DetailView):
 
         return render(request, 'trends.html', context)
 
+#View Class for JAWS Portfolio Optimization, which calls main
 class PortfolioPageView(DetailView): 
     template_name = "index.html"
     def get(self, request):
@@ -131,8 +129,6 @@ class PortfolioPageView(DetailView):
                            start_months, end_years, end_months)
             arg_dict = {key: (*tup[:2], f'{key}_log_return', *tup[2:], rec) 
                         for key, tup in zip(keys, tup_iter)}
-
-            print(arg_dict)
             
             weights, er, sd = main(arg_dict)
             context['output'] = str((weights, er, sd))
@@ -143,7 +139,7 @@ class PortfolioPageView(DetailView):
 
         return render(request, 'index.html', context)
 
-
+#Form used for JAWS Trends Page 
 class TrendsForm(forms.Form):
     stock_ticker = forms.CharField(
         label = 'Stock Ticker:',
@@ -154,7 +150,7 @@ class TrendsForm(forms.Form):
         help_text = 'e.g. iPhone iPad (separated by spaces)',
         required = False)
     
-
+#Form used for JAWS Portfolio Optimization Page
 class SearchForm(forms.Form):
     stock_query = forms.CharField(
         label = 'Stock Ticker:',
