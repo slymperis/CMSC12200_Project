@@ -9,6 +9,8 @@ A GUIDE TO TRENDS.PY
 FUNCTIONS FOR THE USER:
 
 search_heat:
+- To use: enter your desired ticker as a string (e.g. "JPM", use capital letters) and a list of search terms (also strings)
+to try to find a correlation (e.g. ['interest rates','fed','federal reserve']). 
 - search_heat tries to predict the log returns of an equity through the density of a set of search terms
 on Google Trends. Generally speaking, this is meant to help value investment theses that want to argue that
 an equity's price is not reflective of some key observation. While a low R^2 of a given search set is 
@@ -17,10 +19,6 @@ Further, since google is very specific about the densities of search terms, we f
 MULTIPLE related terms to best encompass the concept you want to test. Search_heat is best used when considering long-only,
 value-type theses that rely on extensive data spanning the past 5 years, rather than short term market sentiment. 
 
-related_queries:
-- related queries is a helper to assist the user in finding good, related search terms that will help fully encompass 
-a thesis. Simply plug in a valid YFinance timeframe and you will get related search terms over that period to help
-you build a good model. 
 
 BACKGROUND FUNCTIONS:
 
