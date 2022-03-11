@@ -1,10 +1,22 @@
 JAWS PROJECT README
 
 REQUIREMENTS (please read):
-Pandas 1.3.5- NOT PANDAS 1.4.1 as the Yahoo finance API wrapper has not yet been updated to work with the latest version of Pandas
-R to run correlation modelling not found in any Python packages
-rmgarch package- should be installed on department machines after talking to tech staff, if there is an issue
-with rmgarch refer to tech staff as they said they would update it
+-Pandas 1.3.5- NOT PANDAS 1.4.1 as the Yahoo finance API wrapper has not yet been updated to work with the latest version of Pandas
+-R to run correlation modelling not found in any Python packages
+  -rmgarch package- should be installed on department machines after talking to tech staff, if there is an issue
+    with rmgarch refer to tech staff as they said they would update it
+-Yfinance-ez
+-Statsmodels
+-Numpy
+-Matplotlib
+-Scikit-learn
+-Rpy2
+-Pytrends
+-Django
+-DateTime
+-Itertools
+-Re
+
 
 WHAT IT DOES:
 
