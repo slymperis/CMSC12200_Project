@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 import random
 import itertools
 import datetime as dt
@@ -47,14 +48,14 @@ def get_random_weights(num_assets):
     else:
         return weights
 
-def portfolio_weights_monte_carlo(df, expected_returns, var_cov_matrix, iterations=1000000):
+def portfolio_weights_monte_carlo(df, expected_returns, var_cov_matrix, iterations=100000):
     """
     Runs a Monte Carlo simulation to approximate optimal portfolio weights for an arbitrary number of assets
     As the number of assets increases, a simple grid search becomes too expensive and in many cases impossible
     :param df: DataFrame of log returns
     :param expected_returns: Array of expected returns
     :param var_cov_matrix: Forecasted variance-covariance matrix
-    :param iterations: Number of random weights to try (default is 1 million, takes about 40 seconds to run)
+    :param iterations: Number of random weights to try (default is one hundred thousand, takes about 40 seconds to run)
     :return: optimal weights (array), optimal portfolio expected return (Float), optimal portfolio
      expected standard deviation (Float) tuple
     """
@@ -72,7 +73,7 @@ def portfolio_weights_monte_carlo(df, expected_returns, var_cov_matrix, iteratio
     s, portfolio_er, portfolio_sd = get_portfolio_sharpe(var_cov_matrix, expected_returns, best_weights)
     return best_weights, portfolio_er, portfolio_sd
 
-def main(model_specs, iterations=1000000):
+def main(model_specs, iterations=100000):
     """
     Takes a dictionary mapping tickers to a tuple containing a set of ticker data to regress on,
     a number of lags to use, a key to predict, a number of models to evaluate, a list of keywords to query
@@ -89,7 +90,14 @@ def main(model_specs, iterations=1000000):
     var_covar_matrix = get_var_covar_matrix(log_returns.dropna())
     optimal_weights, portfolio_er, portfolio_sd = portfolio_weights_monte_carlo(log_returns,
                                                         expected_returns, var_covar_matrix, iterations=iterations)
-    return optimal_weights, portfolio_er, portfolio_sd
+    string = ""
+    for i, weight in enumerate(list(optimal_weights)):
+        stock = list(log_returns.columns)[i]
+        stock = re.sub('\_log_return$', '', stock)
+        string = string + "Weight on " + stock + ": " + str(float(weight)) + ", "
+    string = string[:len(string) - 2]
+    
+    return string, "Portfolio Expected Return: " + str(portfolio_er), "Portfolio Standard Deviation: " + str(portfolio_sd)
 
 # Notes regarding the UI
 # "main" is what really needs to be called from a UI since the inputs are really long and it calls nearly everything in the project
