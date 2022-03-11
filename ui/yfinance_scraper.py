@@ -100,7 +100,6 @@ def get_analyst_recommendations(tckr):
     recs = recs.set_index("date")
     start_date = recs.index[0]
     end_date = recs.index[-1]
-    print(start_date, end_date)
     total_days = (end_date - start_date).days
     date_list = []
     for day in range(total_days+1): # Used to create a blank DataFrame with every day that can then be merged with the analyst recommendations so we don't miss any days
