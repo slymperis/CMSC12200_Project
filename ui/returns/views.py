@@ -61,7 +61,7 @@ class TrendsPageView(DetailView):
         form = TrendsForm(request.GET)
         if form.is_valid():
             assert 'key_words' in form.cleaned_data, no_keys
-            for word in form.cleaned_data['key_words'].split(): 
+            for word in form.cleaned_data['key_words'].split(" "): 
                 keywords_str.append(word)
             stock_ticker = form.cleaned_data['stock_ticker']
 
@@ -151,46 +151,46 @@ class TrendsForm(forms.Form):
         required = True)
     key_words = forms.CharField(
         label = 'Key Words to Query for Google Trends:',
-        help_text = 'e.g. iPhone',
+        help_text = 'e.g. iPhone iPad (separated by spaces)',
         required = False)
     
 
 class SearchForm(forms.Form):
     stock_query = forms.CharField(
         label = 'Stock Ticker:',
-        help_text = 'e.g. AAPL',
+        help_text = 'e.g. AAPL, GME (separated by commas)',
         required = True)
     regress_ticker = forms.CharField(
         label = 'Ticker Data to Regress On:',
-        help_text = 'e.g. AAPL, INTC, MSFT (separated by commas)',
+        help_text = 'e.g. AAPL, INTC, MSFT; AAPL, MSFT (separate regress tickers for each individual asset with semicolons)',
         required = True)
     num_models = forms.CharField(
         label = 'Number of Models to Evaluate:',
-        help_text = 'e.g. 3',
+        help_text = 'e.g. 3, 4 (separate by commas)',
         required = True)
     num_lags = forms.CharField(
         label = 'Number of Lags',
-        help_text = 'e.g. 3',
+        help_text = 'e.g. 3, 3 (separate by commas)',
         required = True)
     key_words = forms.CharField(
         label = 'Key Words to Query for Google Trends:',
-        help_text = 'e.g. iPhone (separated by commas); leave blank if None',
+        help_text = 'e.g. iPhone; Games (separate a list of key words for each individual asset with semicolons)',
         required = False)
     start_time_month = forms.CharField(
         label = 'Start Time (Month)',
-        help_text = 'e.g. 3 (March)',
+        help_text = 'e.g. 3, 4 (March, April) (separate by commas)',
         required = True)
     start_time_year = forms.CharField(
         label = 'Start Time (Year)',
-        help_text = 'e.g. 2021',
+        help_text = 'e.g. 2020, 2021 (separate by commas)',
         required = True)
     end_time_month = forms.CharField(
         label = 'End Time (Month)',
-        help_text = 'e.g. 5 (May)',
+        help_text = 'e.g. 5, 6 (May, June) (separate by commas)',
         required = True)
     end_time_year = forms.CharField(
         label = 'End Time (Year)',
-        help_text = 'e.g. 2022',
+        help_text = 'e.g. 2021, 2022 (separate by commas)',
         required = True)
     analyst_recs = forms.BooleanField(label = 'Include Analyst Recommendations',
         required = False)
