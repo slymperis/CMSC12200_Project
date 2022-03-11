@@ -126,8 +126,8 @@ class PortfolioPageView(DetailView):
             end_months = process_nums('end_time_month')
             end_years = process_nums('end_time_year')
 
-            tup_iter = zip(stock_regress, lags, models, key_words, start_months, 
-                           start_years, end_months, end_years)
+            tup_iter = zip(stock_regress, lags, models, key_words, start_years, 
+                           start_months, end_years, end_months)
             arg_dict = {key: (*tup[:2], f'{key}_log_return', *tup[2:], rec) 
                         for key, tup in zip(keys, tup_iter)}
 
