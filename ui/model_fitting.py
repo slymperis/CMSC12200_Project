@@ -122,7 +122,6 @@ def find_lin_reg_models(df, key_to_predict, max_lags, models_to_return, max_feat
     #create_df_lags(df, key_to_predict, max_lags)
     df = df.dropna(how="all", axis=1)
     x_features = list(df.columns)
-    print(key_to_predict)
     if key_to_predict in x_features:
         x_features.remove(key_to_predict)
     if max_features is None:
@@ -311,7 +310,6 @@ def get_expected_returns(model_specs):
     expected_returns = []
     tckrs = set(model_specs.keys())
     log_returns = get_log_return_df(get_yfinance_data(sorted(tckrs)))
-    print(log_returns.dropna())
     for tckr, model_spec in sorted(model_specs.items()):
         tckr_set, lags, key_to_predict, models_to_evaluate, keywords, start_year, start_month,\
         end_year, end_month, analyst_recs = model_spec
