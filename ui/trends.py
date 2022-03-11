@@ -124,7 +124,7 @@ def search_heat(ticker, keywords):
 
     WARNING: as a security measure, Google forces a 60 second cooldown every
 
-    100 terms, which will occur at least once per additional search term
+    100 rows, which will occur at least once per additional search term
 
     '''
 
