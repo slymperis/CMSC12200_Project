@@ -100,60 +100,44 @@ class PortfolioPageView(DetailView):
     def get(self, request):
         context = {}
         res = None 
-        if request.method == 'GET':
-            print("If request.method == GET")
-            form = SearchForm(request.GET)
-            if form.is_valid():
-                args = {}
-                args_val = []
-                args_val.append({regress_ticker})
-                args_val.append(num_lags, stock_query + "_log_return", num_models)
-                if key_words:
-                    args_val.append(key_words)
-                else:
-                    args_val.append(None)
-                args_val.append(start_time_year, start_time_month, end_time_year, end_time_month)
-                if analyst_recs:
-                    args_val.append(True)
-                else:
-                    args_val.append(False)
+        assert request.method == 'GET'
+
+
+        form = SearchForm(request.GET)
+        if form.is_valid():
+            args_dict = {}
             
-                args[key] = tuple(args_val)
+            keys = form.cleaned_data['stock_query'].split(',')
 
-                try:
-                    res = main(args)
+            rec = form.cleaned_data['analyst_recs']
 
-                except Exception as e:
-                    print('Exception caught')
-                    bt = traceback.format_exception(*sys.exc_info()[:3])
-                    context['err'] = """
-                    An exception was thrown in find_courses:
-                    <pre>{}
-    {}</pre>
-                    """.format(e, '\n'.join(bt))
-
-                    res = None
-
-        else:
-            form = SearchForm()
+            stock_regress = form.cleaned_data['regress_ticker'].replace(' ', '')
+            stock_regress = [set(s.split(',')) for s in stock_regress.split(";")]
             
-        if res is None:
-            context['result'] = None
-        elif isinstance(res, str):
-            context['result'] = None
-            context['err'] = res
-            result = None
-        elif not _valid_result(res):
-            context['result'] = None
-            context['err'] = ('Return of portfolio_optimization has the wrong data type.')
+            key_words = form.cleaned_data['key_words'].replace(' ', '')
+            key_words = [s.split(',') for s in key_words.split(';')]
+            key_words = [[s for s in word_lst if s != ''] for word_lst in key_words]
+            key_words = [word_lst if word_lst else None for word_lst in key_words]
+
+            process_nums = lambda field: [int(s) for s in form.cleaned_data[field].split(',')]
+            models = process_nums('num_models')
+            lags = process_nums('num_lags')
+            start_months = process_nums('start_time_month')
+            start_years = process_nums('start_time_year')
+            end_months = process_nums('end_time_month')
+            end_years = process_nums('end_time_year')
+
+            tup_iter = zip(stock_regress, lags, models, key_words, start_months, 
+                           start_years, end_months, end_years)
+            arg_dict = {key: (*tup[:2], f'{key}_log_return', *tup[2:], rec) 
+                        for key, tup in zip(keys, tup_iter)}
+
+            print(arg_dict)
+            
+            weights, er, sd = main(arg_dict)
+            context['output'] = str((weights, er, sd))
         else:
-            weights, result_er, result_op = res
-
-            context['weights'] = weights
-            context['result_er'] = result_er 
-            context['result_op'] = result_op
-            context['columns'] = [COLUMN_NAMES.get(col, col) for col in columns]    #don't really know what this does
-
+            context['output'] = ""
 
         context['form'] = form
 
