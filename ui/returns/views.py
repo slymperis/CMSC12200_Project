@@ -102,7 +102,6 @@ class PortfolioPageView(DetailView):
         res = None 
         assert request.method == 'GET'
 
-
         form = SearchForm(request.GET)
         if form.is_valid():
             args_dict = {}
