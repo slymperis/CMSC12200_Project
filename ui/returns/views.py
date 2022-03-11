@@ -4,6 +4,7 @@ import sys
 import csv
 import os
 import numpy as np
+import datetime as dt
 
 from trends import search_heat
 
@@ -106,7 +107,7 @@ class PortfolioPageView(DetailView):
         if form.is_valid():
             args_dict = {}
             
-            keys = form.cleaned_data['stock_query'].split(',')
+            keys = form.cleaned_data['stock_query'].replace(' ', '').split(',')
 
             rec = form.cleaned_data['analyst_recs']
 
@@ -123,8 +124,8 @@ class PortfolioPageView(DetailView):
             lags = process_nums('num_lags')
             start_months = process_nums('start_time_month')
             start_years = process_nums('start_time_year')
-            end_months = process_nums('end_time_month')
-            end_years = process_nums('end_time_year')
+            end_months = [dt.datetime.now().month for x in start_months]
+            end_years = [dt.datetime.now().year for x in start_years]
 
             tup_iter = zip(stock_regress, lags, models, key_words, start_years, 
                            start_months, end_years, end_months)
@@ -161,7 +162,8 @@ class SearchForm(forms.Form):
         required = True)
     regress_ticker = forms.CharField(
         label = 'Ticker Data to Regress On:',
-        help_text = 'e.g. AAPL, INTC, MSFT; AAPL, MSFT (separate regress tickers for each individual asset with semicolons)',
+        help_text = 'e.g. AAPL, INTC, MSFT; GME, MSFT (separate regress tickers for each individual asset with semicolons) \
+                    NOTE: You must include the main ticker in its own tickers to regress on as shown in the examples',
         required = True)
     num_models = forms.CharField(
         label = 'Number of Models to Evaluate:',
@@ -182,14 +184,6 @@ class SearchForm(forms.Form):
     start_time_year = forms.CharField(
         label = 'Start Time (Year)',
         help_text = 'e.g. 2020, 2021 (separate by commas)',
-        required = True)
-    end_time_month = forms.CharField(
-        label = 'End Time (Month)',
-        help_text = 'e.g. 5, 6 (May, June) (separate by commas)',
-        required = True)
-    end_time_year = forms.CharField(
-        label = 'End Time (Year)',
-        help_text = 'e.g. 2021, 2022 (separate by commas)',
         required = True)
     analyst_recs = forms.BooleanField(label = 'Include Analyst Recommendations',
         required = False)
