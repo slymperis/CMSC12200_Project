@@ -97,7 +97,7 @@ def main(model_specs, iterations=100000):
         string = string + "Weight on " + stock + ": " + str(float(weight)) + ", "
     string = string[:len(string) - 2]
     
-    return string, "Portfolio Expected Return: " + str(portfolio_er * 100) + "%", "Portfolio Standard Deviation: " + str(portfolio_sd * 100) + "%"
+    return string, "Portfolio Expected Return: " + str(portfolio_er * 100)[:6] + "%", "Portfolio Standard Deviation: " + str(portfolio_sd * 100)[:6] + "%"
 
 # Notes regarding the UI
 # "main" is what really needs to be called from a UI since the inputs are really long and it calls nearly everything in the project
